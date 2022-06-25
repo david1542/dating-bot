@@ -27,9 +27,10 @@ def create_model():
 
     # Convert features of shape `base_model.output_shape[1:]` to vectors
     x = keras.layers.GlobalAveragePooling2D()(x)
-    x = keras.layers.Dense()
+
     # A Dense classifier with a single unit (binary classification)
-    outputs = keras.layers.Dense(1)(x)
+    x = keras.layers.Dense(512, activation='relu')(x)
+    outputs = keras.layers.Dense(1, activation='sigmoid')(x)
     model = keras.Model(inputs, outputs)
     
     return model
@@ -55,9 +56,9 @@ def train(task_name: str, args: argparse.Namespace):
 
     # Compile the model
     optimizer = keras.optimizers.Adam()
-    loss = keras.losses.BinaryCrossentropy(from_logits=True)
+    loss = keras.losses.BinaryCrossentropy(from_logits=False)
     metrics = [
-        keras.metrics.Accuracy()
+        keras.metrics.BinaryAccuracy(threshold=0.5)
     ]
 
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
@@ -75,8 +76,7 @@ def train(task_name: str, args: argparse.Namespace):
         epochs=args.epochs, callbacks=callbacks)
 
     # Load best checkpoint & evaluate the model
-    model_path = f'{task_path}/saved_model/best/model.h5'
-    model = keras.load_model(model_path, compile=False)
+    model = keras.models.load_model(best_model_path, compile=False)
     model.compile(loss=loss, metrics=metrics)
 
     valid_performance = model.evaluate(ds_valid, return_dict=True)
