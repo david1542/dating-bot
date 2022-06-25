@@ -16,6 +16,7 @@ def create_model():
         input_shape=(256, 256, 3),
         include_top=False)
 
+    backbone.trainable = False
     inputs = keras.Input(shape=(256, 256, 3))
 
     # We make sure that the base_model is running in inference mode here,
