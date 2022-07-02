@@ -7,9 +7,11 @@ from PIL import Image
 from bs4 import BeautifulSoup
 
 from constants import DATASET_PATH
-# from src.utils.augs import augmentor
+from src.utils.augs import augmentor
 
-IMAGE_SIZE = (256, 256)
+IMAGE_SIZE = (256, 256, 3)
+IMAGE_WIDTH = IMAGE_SIZE[0]
+IMAGE_HEIGHT = IMAGE_SIZE[1]
 BATCH_SIZE = 32
 
 def xml_to_dataframe(xml: BeautifulSoup):
@@ -60,22 +62,22 @@ def load_image(image_path, label):
     return image, label
 
 def resize_image(image, label):
-    image_resized = tf.image.resize(image, IMAGE_SIZE, method='nearest')
+    image_resized = tf.image.resize(image, [IMAGE_WIDTH, IMAGE_HEIGHT], method='nearest')
     return image_resized, label
-
-def expand_dims(image, label):
-    image = tf.expand_dims(image, axis=0)
-    return image, label
 
 def cast_float32(image, label):
     image = tf.cast(image, dtype=tf.float32)
     image = image * (1. / 255)
     return image, label
 
-# def augment_image(image, label):
-#     image_aug = tf.numpy_function(
-#         func=augmentor, inp=image, Tout=tf.int16)
-#     return image_aug, label
+def augment_image(image, label):
+    image_aug = tf.numpy_function(
+        func=augmentor, inp=(image,), Tout=tf.float32)
+    return image_aug, label
+
+def set_shapes(image, label):
+    image.set_shape(IMAGE_SIZE)
+    return image, label
 
 def create_dataset(df: pd.DataFrame, batch_size: int = BATCH_SIZE):
     image_paths, labels = df['file_path'].values, df['label'].values
@@ -84,9 +86,9 @@ def create_dataset(df: pd.DataFrame, batch_size: int = BATCH_SIZE):
 
     dataset = tf.data.Dataset.from_tensor_slices((image_paths, labels))
     dataset = dataset.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.map(cast_float32, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.map(resize_image, num_parallel_calls=tf.data.AUTOTUNE)
-    # dataset = dataset.map(augment_image, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(augment_image, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(set_shapes, num_parallel_calls=tf.data.AUTOTUNE)
 
     dataset = dataset.batch(min(batch_size, len(image_paths)))
     return dataset

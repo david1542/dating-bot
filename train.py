@@ -11,7 +11,7 @@ from src.utils.data import create_dataset, load_metadata, split_metadata
 def create_dataframe(X, y):
     return pd.DataFrame({'file_path': X, 'label': y})
 
-def create_model():
+def create_model(dropout_rate=0.1):
     backbone = keras.applications.Xception(
         weights='imagenet',  # Load weights pre-trained on ImageNet.
         input_shape=(256, 256, 3),
@@ -21,15 +21,17 @@ def create_model():
     inputs = keras.Input(shape=(256, 256, 3))
 
     # We make sure that the base_model is running in inference mode here,
-    # by passing `training=False`. This is important for fine-tuning, as you will
-    # learn in a few paragraphs.
+    # by passing `training=False`
     x = backbone(inputs, training=False)
 
     # Convert features of shape `base_model.output_shape[1:]` to vectors
     x = keras.layers.GlobalAveragePooling2D()(x)
 
     # A Dense classifier with a single unit (binary classification)
-    x = keras.layers.Dense(512, activation='relu')(x)
+    x = keras.layers.Dense(256, activation='relu')(x)
+    x = keras.layers.Dropout(rate=dropout_rate)(x)
+    x = keras.layers.Dense(128, activation='relu')(x)
+    x = keras.layers.Dropout(rate=dropout_rate)(x)
     outputs = keras.layers.Dense(1, activation='sigmoid')(x)
     model = keras.Model(inputs, outputs)
     
